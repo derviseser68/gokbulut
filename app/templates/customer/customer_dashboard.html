@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4 align-items-center border-bottom pb-3">
+    <div class="col-md-8">
+        <h2><i class="fas fa-box-open text-primary me-2"></i>Aboneliklerim ve Paketlerim</h2>
+        <p class="text-muted mb-0">Aktif teslimat durumlarınızı aşağıdan takip edebilirsiniz.</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#newSubscriptionModal">
+            <i class="fas fa-plus me-1"></i> Yeni Abonelik Ekle
+        </button>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white border-bottom py-3">
+        <h5 class="mb-0 fw-bold"><i class="fas fa-list me-2"></i>Paket Durumları</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Paket ID</th>
+                        <th>Planlanan Teslimat</th>
+                        <th>Durum</th>
+                        <th class="text-end">İçerik Detayı</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if deliveries %}
+                        {% for pkg in deliveries %}
+                        <tr>
+                            <td><strong>#{{ pkg.id }}</strong></td>
+                            <td><i class="far fa-calendar-alt text-muted me-1"></i> {{ pkg.delivery_date }}</td>
+                            <td>
+                                {% if pkg.status == 'Teslim Edildi' %}
+                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>{{ pkg.status }}</span>
+                                {% elif pkg.status == 'Dağıtımda' %}
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-truck me-1"></i>{{ pkg.status }}</span>
+                                {% elif pkg.status == 'İptal Edildi' %}
+                                    <span class="badge bg-danger"><i class="fas fa-times me-1"></i>{{ pkg.status }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary"><i class="fas fa-box me-1"></i>{{ pkg.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#itemsModal{{ pkg.id }}">
+                                    <i class="fas fa-search me-1"></i> İncele
+                                </button>
+                            </td>
+                        </tr>
+
+                        <div class="modal fade" id="itemsModal{{ pkg.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-sm">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-light">
+                                        <h5 class="modal-title"><i class="fas fa-shopping-basket me-2"></i>Paket İçeriği</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="bg-dark text-light p-2 rounded">
+                                            <pre class="mb-0"><code>{{ pkg.items }}</code></pre>
+                                        </div>
+                                        <small class="text-muted d-block mt-2">* Sistem ürün ID'lerini ve adetlerini listeler.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center py-5 text-muted">
+                                <i class="fas fa-box-open fa-3x mb-3 text-light"></i><br>
+                                Henüz planlanmış bir teslimatınız bulunmuyor.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="newSubscriptionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="#" method="POST">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-paw me-2"></i>Yeni Mama Aboneliği</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Ürün Seçimi</label>
+                        <select class="form-select" required>
+                            <option value="">Lütfen ürün seçin...</option>
+                            <option value="1">Yetişkin Köpek Maması (15kg)</option>
+                            <option value="2">Yavru Kedi Maması (5kg)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Teslimat Sıklığı</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" min="1" max="90" required>
+                            <span class="input-group-text bg-light">Günde Bir</span>
+                        </div>
+                        <div class="form-text text-muted">Örn: 30 yazarsanız, ürün 30 günde bir adresinize otomatik gönderilir.</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-play me-1"></i> Aboneliği Başlat</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

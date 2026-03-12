@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+    <h2><i class="fas fa-users text-primary me-2"></i>Müşteri Yönetimi</h2>
+    <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
+        <i class="fas fa-user-plus me-1"></i> Yeni Müşteri Ekle
+    </button>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <div class="input-group shadow-sm">
+            <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+            <input type="text" id="customerSearchInput" class="form-control border-start-0" placeholder="İsim, ID, Telefon veya E-posta Ara...">
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Ad Soyad</th>
+                        <th>İletişim Bilgileri</th>
+                        <th>Abonelik Bitiş</th>
+                        <th>Durum</th>
+                        <th class="text-end">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody id="customerTableBody">
+                    {% for cust in customers %}
+                    <tr>
+                        <td><strong>#{{ cust.id }}</strong></td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-light rounded-circle p-2 me-2 text-primary">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <span class="fw-bold">{{ cust.full_name }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="small text-muted"><i class="fas fa-envelope me-1"></i>{{ cust.email }}</div>
+                            <div class="small"><i class="fas fa-phone-alt text-success me-1"></i>{{ cust.phone }}</div>
+                        </td>
+                        <td>
+                            <i class="far fa-calendar-alt text-muted me-1"></i> <strong>{{ cust.subscription_end_date }}</strong>
+                        </td>
+                        <td>
+                            {% if cust.status == 'Aktif' %}
+                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Aktif</span>
+                            {% else %}
+                                <span class="badge bg-danger"><i class="fas fa-ban me-1"></i>Askıda</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-info me-1" data-bs-toggle="modal" data-bs-target="#detailModal{{ cust.id }}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning me-1" data-bs-toggle="modal" data-bs-target="#editModal{{ cust.id }}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ cust.id }}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+
+                    <div class="modal fade text-start" id="editModal{{ cust.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <form action="{{ url_for('admin.update_customer', customer_id=cust.id) }}" method="POST">
+                                    <div class="modal-header bg-warning text-dark">
+                                        <h5 class="modal-title"><i class="fas fa-user-edit me-2"></i>Müşteri Düzenle: {{ cust.full_name }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body p-4">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Ad Soyad</label>
+                                                <input type="text" class="form-control" name="full_name" value="{{ cust.full_name }}" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Telefon</label>
+                                                <input type="text" class="form-control" name="phone" value="{{ cust.phone }}" required>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <label class="form-label fw-bold">E-Posta</label>
+                                                <input type="email" class="form-control" name="email" value="{{ cust.email }}" required>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <label class="form-label fw-bold text-danger"><i class="fas fa-calendar-alt me-1"></i> Abonelik Bitiş Tarihi</label>
+                                                <input type="date" class="form-control border-danger" name="subscription_end_date" value="{{ cust.subscription_end_date }}" required>
+                                                <small class="text-muted">Bu tarihi bugünden ileri bir tarihe alırsanız müşteri otomatik olarak AKTİF durumuna geçer.</small>
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label fw-bold">Açık Adres</label>
+                                                <textarea class="form-control" name="address" rows="3" required>{{ cust.address }}</textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer bg-light">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                                        <button type="submit" class="btn btn-warning fw-bold">Değişiklikleri Kaydet</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade text-start" id="detailModal{{ cust.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-light">
+                                    <h5 class="modal-title"><i class="fas fa-address-card me-2"></i>{{ cust.full_name }} Detayları</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <ul class="list-group list-group-flush">
+                                        <li class="list-group-item"><strong>Telefon:</strong> {{ cust.phone }}</li>
+                                        <li class="list-group-item"><strong>E-Posta:</strong> {{ cust.email }}</li>
+                                        <li class="list-group-item"><strong>Tam Adres:</strong> {{ cust.address }}</li>
+                                        <li class="list-group-item bg-light mt-3 rounded">
+                                            <strong>Abonelik Durumu:</strong> 
+                                            <span class="text-{{ 'success' if cust.status == 'Aktif' else 'danger' }} fw-bold">{{ cust.status }}</span><br>
+                                            <small class="text-muted">Bitiş Tarihi: {{ cust.subscription_end_date }}</small>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade text-start" id="deleteModal{{ cust.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-sm">
+                            <div class="modal-content border-danger">
+                                <form action="{{ url_for('admin.delete_customer', customer_id=cust.id) }}" method="POST">
+                                    <div class="modal-body text-center p-4">
+                                        <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                                        <h5 class="mb-3">Müşteriyi Sil</h5>
+                                        <p class="text-muted small"><strong>{{ cust.full_name }}</strong> isimli müşteriyi ve tüm kayıtlarını sistemden silmek istediğinize emin misiniz?</p>
+                                    </div>
+                                    <div class="modal-footer bg-light justify-content-center">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                                        <button type="submit" class="btn btn-danger">Evet, Tamamen Sil</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addCustomerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form action="{{ url_for('admin.add_customer') }}" method="POST">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Yeni Müşteri Kaydı</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Ad Soyad</label>
+                            <input type="text" class="form-control" name="full_name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Telefon</label>
+                            <input type="text" class="form-control" name="phone" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">E-Posta</label>
+                            <input type="email" class="form-control" name="email" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Şehir</label>
+                            <input type="text" class="form-control" name="city" placeholder="Örn: İstanbul" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Açık Adres</label>
+                            <textarea class="form-control" name="address" rows="2" required></textarea>
+                        </div>
+                        
+                        <hr class="my-4">
+                        <h6 class="text-primary mb-3"><i class="fas fa-key me-2"></i>Müşteri Portal Giriş Bilgileri</h6>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Kullanıcı Adı</label>
+                            <input type="text" class="form-control" name="username" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Şifre</label>
+                            <input type="password" class="form-control" name="password" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Kaydet ve Aboneliği Başlat</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('customerSearchInput');
+        const tableBody = document.getElementById('customerTableBody');
+        const rows = tableBody.getElementsByTagName('tr');
+
+        searchInput.addEventListener('keyup', function() {
+            const filter = searchInput.value.toLowerCase();
+            
+            for (let i = 0; i < rows.length; i++) {
+                const rowText = rows[i].textContent.toLowerCase();
+                if (rowText.includes(filter)) {
+                    rows[i].style.display = '';
+                } else {
+                    rows[i].style.display = 'none';
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

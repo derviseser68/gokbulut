@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .kpi-card { transition: transform 0.3s ease, box-shadow 0.3s ease; border-radius: 15px; border: none; }
+    .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
+    .kpi-icon { width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    .nav-tabs .nav-link { color: #6c757d; font-weight: 600; border: none; padding: 12px 20px; transition: all 0.3s; }
+    .nav-tabs .nav-link.active { color: #2c3e50; border-bottom: 3px solid #1abc9c; background: transparent; }
+    .nav-tabs .nav-link:hover { color: #1abc9c; }
+    .custom-table th { background-color: #f8f9fa; color: #2c3e50; font-weight: 700; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px; }
+    .custom-table tbody tr { transition: background-color 0.2s; }
+    .custom-table tbody tr:hover { background-color: #f1f4f6; }
+</style>
+
+{% macro render_table(packages, table_id, print_title) %}
+    {% if packages|length > 0 %}
+    
+    <div class="d-flex justify-content-end bg-white p-2 border-bottom">
+        <button class="btn btn-sm btn-outline-dark shadow-sm" onclick="printDeliveryList('{{ table_id }}', '{{ print_title }}')">
+            <i class="fas fa-print me-1"></i> Bu Listeyi Yazdır
+        </button>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table custom-table align-middle mb-0" id="{{ table_id }}">
+            <thead>
+                <tr>
+                    <th class="ps-4">Sipariş</th>
+                    <th>Müşteri</th>
+                    <th>Teslimat Adresi</th>
+                    <th>Durum</th>
+                    <th class="text-end pe-4">İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pkg in packages %}
+                <tr data-items="{{ pkg['items'] | tojson | forceescape }}">
+                    <td class="ps-4">
+                        <span class="badge bg-light text-dark border p-2">#{{ pkg.id }}</span>
+                    </td>
+                    <td>
+                        <div class="fw-bold text-dark">{{ pkg.customers.full_name }}</div>
+                        <div class="small text-muted">{{ pkg.customers.phone }}</div>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center text-muted small">
+                            <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                            {{ pkg.customers.address[:40] }}...
+                        </div>
+                        <span class="d-none full-address">{{ pkg.customers.address }}</span>
+                    </td>
+                    <td>
+                        <span class="badge rounded-pill {% if pkg.status == 'Teslim Edildi' %}bg-success{% elif pkg.status == 'Dağıtımda' %}bg-warning text-dark{% elif pkg.status == 'İptal Edildi' %}bg-danger{% else %}bg-secondary{% endif %} px-3 py-2">
+                            {{ pkg.status }}
+                        </span>
+                    </td>
+                    <td class="text-end pe-4">
+                        <button type="button" class="btn btn-sm btn-light text-primary border me-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#detailModal{{ pkg.id }}" title="Detay">
+                            <i class="fas fa-eye"></i> İncele
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#statusModal{{ pkg.id }}" title="Güncelle">
+                            <i class="fas fa-pen"></i> Durum
+                        </button>
+                    </td>
+                </tr>
+
+                <div class="modal fade text-start" id="detailModal{{ pkg.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content border-0 shadow">
+                            <div class="modal-header bg-light border-0">
+                                <h5 class="modal-title fw-bold text-dark"><i class="fas fa-box text-primary me-2"></i>Sipariş Özeti #{{ pkg.id }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Müşteri</small>
+                                        <strong class="text-dark">{{ pkg.customers.full_name }}</strong>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Telefon</small>
+                                        <strong class="text-dark">{{ pkg.customers.phone }}</strong>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <small class="text-muted d-block">Tam Adres</small>
+                                    <span class="text-dark">{{ pkg.customers.address }}</span>
+                                </div>
+                                <div class="mb-4">
+                                    <small class="text-muted d-block">Planlanan Teslimat</small>
+                                    <span class="badge bg-primary fs-6">{{ pkg.delivery_date }}</span>
+                                </div>
+                                <div class="p-3 bg-light rounded-3 border">
+                                    <small class="text-muted d-block mb-2 fw-bold"><i class="fas fa-shopping-cart me-1"></i> Paket İçeriği (JSON)</small>
+                                    <code class="text-dark">{{ pkg['items'] }}</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal fade text-start" id="statusModal{{ pkg.id }}" tabindex="-1">
+                    <div class="modal-dialog modal-sm">
+                        <div class="modal-content border-0 shadow">
+                            <form action="{{ url_for('admin.update_status', delivery_id=pkg.id) }}" method="POST">
+                                <div class="modal-header bg-light border-0">
+                                    <h5 class="modal-title fw-bold"><i class="fas fa-sync-alt text-warning me-2"></i>Durum Güncelle</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <label class="form-label fw-bold text-muted small">Sipariş #{{ pkg.id }} Yeni Durumu:</label>
+                                    <select class="form-select form-select-lg shadow-sm" name="status" required>
+                                        <option value="Hazırlanıyor" {% if pkg.status == 'Hazırlanıyor' %}selected{% endif %}>📦 Hazırlanıyor</option>
+                                        <option value="Dağıtımda" {% if pkg.status == 'Dağıtımda' %}selected{% endif %}>🚚 Dağıtımda</option>
+                                        <option value="Teslim Edildi" class="text-success fw-bold">✅ Teslim Edildi</option>
+                                        <option value="İptal Edildi" class="text-danger">❌ İptal Edildi</option>
+                                    </select>
+                                </div>
+                                <div class="modal-footer border-0 bg-light">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                                    <button type="submit" class="btn btn-primary px-4">Kaydet</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <div class="display-1 text-muted opacity-25 mb-3"><i class="fas fa-clipboard-check"></i></div>
+        <h5 class="text-muted">Bu tarihte bekleyen paket bulunmuyor.</h5>
+    </div>
+    {% endif %}
+{% endmacro %}
+
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark"><i class="fas fa-chart-pie text-primary me-2"></i>Sistem Özeti</h2>
+    <span class="text-muted"><i class="far fa-clock me-1"></i> Son Güncelleme: <strong>Şimdi</strong></span>
+</div>
+
+<div class="row row-cols-1 row-cols-md-3 row-cols-xl-5 g-4 mb-5">
+    
+    <div class="col">
+        <div class="card kpi-card shadow-sm h-100 bg-white border-bottom border-warning border-3">
+            <div class="card-body d-flex align-items-center">
+                <div class="kpi-icon bg-warning bg-opacity-10 text-warning me-3">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Kayıtlı Müşteri</h6>
+                    <h3 class="mb-0 fw-bold">{{ total_customers }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col">
+        <div class="card kpi-card shadow-sm h-100 bg-white">
+            <div class="card-body d-flex align-items-center">
+                <div class="kpi-icon bg-primary bg-opacity-10 text-primary me-3">
+                    <i class="fas fa-boxes"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Toplam Bekleyen</h6>
+                    <h3 class="mb-0 fw-bold">{{ today_packages|length + tomorrow_packages|length + delayed_packages|length }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card kpi-card shadow-sm h-100 bg-white">
+            <div class="card-body d-flex align-items-center">
+                <div class="kpi-icon bg-success bg-opacity-10 text-success me-3">
+                    <i class="fas fa-calendar-day"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Bugünkü Rota</h6>
+                    <h3 class="mb-0 fw-bold">{{ today_packages|length }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card kpi-card shadow-sm h-100 bg-white">
+            <div class="card-body d-flex align-items-center">
+                <div class="kpi-icon bg-info bg-opacity-10 text-info me-3">
+                    <i class="fas fa-calendar-plus"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Yarının Planı</h6>
+                    <h3 class="mb-0 fw-bold">{{ tomorrow_packages|length }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card kpi-card shadow-sm h-100 bg-white border-bottom border-danger border-3">
+            <div class="card-body d-flex align-items-center">
+                <div class="kpi-icon bg-danger bg-opacity-10 text-danger me-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Geciken İşlemler</h6>
+                    <h3 class="mb-0 fw-bold text-danger">{{ delayed_packages|length }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0" style="border-radius: 15px; overflow: hidden;">
+    <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+        <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="today-tab" data-bs-toggle="tab" data-bs-target="#today" type="button" role="tab">
+                    <i class="fas fa-truck-fast me-1"></i> Bugün Teslim Edilecekler
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tomorrow-tab" data-bs-toggle="tab" data-bs-target="#tomorrow" type="button" role="tab">
+                    <i class="fas fa-box-open me-1"></i> Yarın Planlananlar
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-danger" id="delayed-tab" data-bs-toggle="tab" data-bs-target="#delayed" type="button" role="tab">
+                    <i class="fas fa-clock me-1"></i> Gecikenler
+                    {% if delayed_packages|length > 0 %}
+                    <span class="badge bg-danger ms-1 rounded-pill">{{ delayed_packages|length }}</span>
+                    {% endif %}
+                </button>
+            </li>
+        </ul>
+    </div>
+    
+    <div class="card-body p-0">
+        <div class="tab-content" id="dashboardTabsContent">
+            <div class="tab-pane fade show active p-0" id="today" role="tabpanel">
+                {{ render_table(today_packages, 'table-today', 'Bugün Teslim Edilecek Paketler') }}
+            </div>
+            <div class="tab-pane fade p-0" id="tomorrow" role="tabpanel">
+                {{ render_table(tomorrow_packages, 'table-tomorrow', 'Yarın Teslim Edilecek Paketler') }}
+            </div>
+            <div class="tab-pane fade p-0" id="delayed" role="tabpanel">
+                {{ render_table(delayed_packages, 'table-delayed', 'Geciken Paketler Listesi') }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function printDeliveryList(tableId, title) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    const printWindow = window.open('', '', 'height=700,width=900');
+    const rows = table.querySelectorAll('tbody tr');
+    
+    let printHtml = `
+        <html>
+        <head>
+            <title>${title}</title>
+            <style>
+                body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 30px; color: #333; }
+                h2 { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 30px; text-transform: uppercase;}
+                .date-info { text-align: right; margin-bottom: 10px; font-size: 14px; color: #555; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+                th, td { border: 1px solid #ddd; padding: 12px; text-align: left; vertical-align: top; }
+                th { background-color: #f8f9fa; font-weight: bold; border-bottom: 2px solid #333; }
+                td strong { color: #000; font-size: 15px; }
+                .items-cell { font-family: monospace; background: #f9f9f9; font-size: 13px; }
+            </style>
+        </head>
+        <body>
+            <div class="date-info">Çıktı Alınma Tarihi: ${new Date().toLocaleString('tr-TR')}</div>
+            <h2>${title}</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th width="10%">Sipariş</th>
+                        <th width="20%">Müşteri Adı</th>
+                        <th width="15%">Telefon</th>
+                        <th width="35%">Tam Adres</th>
+                        <th width="20%">Ürün Kodu (Adet)</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    rows.forEach(row => {
+        const id = row.querySelector('td:nth-child(1)').innerText.trim();
+        const name = row.querySelector('.fw-bold.text-dark').innerText.trim();
+        const phone = row.querySelector('.small.text-muted').innerText.trim();
+        const fullAddress = row.querySelector('.full-address').innerText.trim();
+        const itemsJson = row.getAttribute('data-items');
+        
+        let itemsText = itemsJson;
+        try {
+            const parsedItems = JSON.parse(itemsJson);
+            itemsText = parsedItems.map(i => `Ürün ID:${i.product_id} (${i.quantity} Adet)`).join('<br>');
+        } catch(e) {}
+
+        printHtml += `
+            <tr>
+                <td><strong>${id}</strong></td>
+                <td><strong>${name}</strong></td>
+                <td>${phone}</td>
+                <td>${fullAddress}</td>
+                <td class="items-cell">${itemsText}</td>
+            </tr>
+        `;
+    });
+
+    printHtml += `
+                </tbody>
+            </table>
+            <div style="margin-top: 40px; text-align: center; font-size: 12px; color: #777;">
+                Bu belge Pati Kargo Yönetim Sistemi tarafından otomatik oluşturulmuştur.
+            </div>
+        </body>
+        </html>
+    `;
+
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+    printWindow.focus();
+    
+    setTimeout(() => {
+        printWindow.print();
+    }, 250);
+}
+</script>
+{% endblock %}
